@@ -2,6 +2,9 @@ from keras.src.api_export import keras_export
 from keras.src.layers.preprocessing.image_preprocessing.base_image_preprocessing_layer import (  # noqa: E501
     BaseImagePreprocessingLayer,
 )
+from keras.src.layers.preprocessing.image_preprocessing.bounding_boxes.validation import (  # noqa: E501
+    densify_bounding_boxes,
+)
 from keras.src.random.seed_generator import SeedGenerator
 
 HORIZONTAL = "horizontal"
@@ -88,10 +91,81 @@ class RandomFlip(BaseImagePreprocessingLayer):
     def transform_labels(self, labels, transformation, training=True):
         return labels
 
-    def transform_bounding_boxes(
-        self, bounding_boxes, transformation, training=True
-    ):
-        raise NotImplementedError
+    def transform_bounding_boxes(self, bounding_boxes, transformation, training=True):
+        """
+        bounding_boxes = {
+            "boxes": (batch, num_boxes, 4),  # left, top, right, bottom
+            "labels": (batch, num_boxes, num_classes),
+        }
+        or
+        bounding_boxes = {
+            "boxes": (num_boxes, 4),
+            "labels": (num_boxes, num_classes),
+        }
+        """
+        if transformation is None:
+            return bounding_boxes
+        
+        flips = transformation["flips"]
+        
+        if not self.backend.is_tensor(bounding_boxes["boxes"]):
+            bounding_boxes = densify_bounding_boxes(bounding_boxes, backend=self.backend)
+        
+        boxes = bounding_boxes["boxes"]
+        
+        image_shape = self.backend.shape(transformation["image_shape"])
+        image_height = image_shape[-3]
+        image_width = image_shape[-2]
+        
+        if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
+            if len(self.backend.shape(boxes)) == 3:
+                boxes = self.backend.numpy.stack(
+                    [
+                        image_width - boxes[:, :, 2],
+                        boxes[:, :, 1],
+                        image_width - boxes[:, :, 0],
+                        boxes[:, :, 3],
+                    ],
+                    axis=-1,
+                )
+            else:
+                boxes = self.backend.numpy.stack(
+                    [
+                        image_width - boxes[:, 2],
+                        boxes[:, 1],
+                        image_width - boxes[:, 0],
+                        boxes[:, 3],
+                    ],
+                    axis=-1,
+                )
+        
+        if self.mode == VERTICAL or self.mode == HORIZONTAL_AND_VERTICAL:
+            if len(self.backend.shape(boxes)) == 3:
+                boxes = self.backend.numpy.stack(
+                    [
+                        boxes[:, :, 0],
+                        image_height - boxes[:, :, 3],
+                        boxes[:, :, 2],
+                        image_height - boxes[:, :, 1],
+                    ],
+                    axis=-1,
+                )
+            else:
+                boxes = self.backend.numpy.stack(
+                    [
+                        boxes[:, 0],
+                        image_height - boxes[:, 3],
+                        boxes[:, 2],
+                        image_height - boxes[:, 1],
+                    ],
+                    axis=-1,
+                )
+        
+        return {
+            "boxes": boxes,
+            "labels": bounding_boxes["labels"],
+        }
+
 
     def transform_segmentation_masks(
         self, segmentation_masks, transformation, training=True
