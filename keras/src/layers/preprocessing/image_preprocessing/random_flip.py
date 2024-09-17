@@ -92,20 +92,9 @@ class RandomFlip(BaseImagePreprocessingLayer):
         return labels
 
     def transform_bounding_boxes(self, bounding_boxes, transformation, training=True):
-        """
-        bounding_boxes = {
-            "boxes": (batch, num_boxes, 4),  # left, top, right, bottom
-            "labels": (batch, num_boxes, num_classes),
-        }
-        or
-        bounding_boxes = {
-            "boxes": (num_boxes, 4),
-            "labels": (num_boxes, num_classes),
-        }
-        """
         if transformation is None:
             return bounding_boxes
-        
+
         flips = transformation["flips"]
         
         if not self.backend.is_tensor(bounding_boxes["boxes"]):
@@ -113,9 +102,13 @@ class RandomFlip(BaseImagePreprocessingLayer):
         
         boxes = bounding_boxes["boxes"]
         
-        image_shape = self.backend.shape(transformation["image_shape"])
-        image_height = image_shape[-3]
-        image_width = image_shape[-2]
+        input_shape = self.backend.shape(boxes)
+        if len(input_shape) == 3:
+            image_height = input_shape[1]
+            image_width = input_shape[2]
+        else:
+            image_height = input_shape[0]
+            image_width = input_shape[1]
         
         if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
             if len(self.backend.shape(boxes)) == 3:
@@ -165,6 +158,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
             "boxes": boxes,
             "labels": bounding_boxes["labels"],
         }
+
 
 
     def transform_segmentation_masks(
