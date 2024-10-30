@@ -103,7 +103,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
         transformation,
         training=True,
     ):
-        print(transformation)
+        ops = self.backend
         if self.bounding_box_format is None:
             raise ValueError(
                 "`RandomFlip()` was called with bounding boxes,"
@@ -122,26 +122,26 @@ class RandomFlip(BaseImagePreprocessingLayer):
         boxes = bounding_boxes["boxes"]
         flips = transformation["flips"]
 
-        batch_size = self.backend.shape(boxes)[0]
-        max_boxes = self.backend.shape(boxes)[1]
+        batch_size = ops.numpy.shape(boxes)[0]
+        max_boxes = ops.numpy.shape(boxes)[1]
 
         # Apply flips based on mode
         if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
             flip_horizontals = (
-                self.backend.ones(shape=(batch_size, max_boxes, 4))
-                * flips[:, self.backend.numpy.newaxis, :]
+                ops.numpy.ones(shape=(batch_size, max_boxes, 4))
+                * flips[:, ops.numpy.newaxis, :]
             )
-            boxes = self.backend.numpy.where(
+            boxes = ops.numpy.where(
                 flip_horizontals > (1.0 - self.rate),
                 self._flip_boxes_horizontal(boxes),
                 boxes,
             )
         if self.mode == VERTICAL or self.mode == HORIZONTAL_AND_VERTICAL:
             flip_verticals = (
-                self.backend.ones(shape=(batch_size, max_boxes, 4))
-                * flips[:, self.backend.numpy.newaxis, :]
+                ops.numpy.ones(shape=(batch_size, max_boxes, 4))
+                * flips[:, ops.numpy.newaxis, :]
             )
-            boxes = self.backend.numpy.where(
+            boxes = ops.numpy.where(
                 flip_verticals > (1.0 - self.rate),
                 self._flip_boxes_vertical(boxes),
                 boxes,
@@ -159,13 +159,13 @@ class RandomFlip(BaseImagePreprocessingLayer):
         return bounding_boxes
 
     def _flip_boxes_horizontal(self, boxes):
-        x1, x2, x3, x4 = self.backend.numpy.split(boxes, 4, axis=-1)
-        outputs = self.backend.numpy.concat([1 - x3, x2, 1 - x1, x4], axis=-1)
+        x1, x2, x3, x4 = ops.numpy.split(boxes, 4, axis=-1)
+        outputs = ops.numpy.concat([1 - x3, x2, 1 - x1, x4], axis=-1)
         return outputs
 
     def _flip_boxes_vertical(self, boxes):
-        x1, x2, x3, x4 = self.backend.numpy.split(boxes, 4, axis=-1)
-        outputs = self.backend.numpy.concat([x1, 1 - x4, x3, 1 - x2], axis=-1)
+        x1, x2, x3, x4 = ops.numpy.split(boxes, 4, axis=-1)
+        outputs = ops.numpy.concat([x1, 1 - x4, x3, 1 - x2], axis=-1)
         return outputs
     
     def transform_segmentation_masks(
