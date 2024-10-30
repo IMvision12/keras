@@ -122,8 +122,8 @@ class RandomFlip(BaseImagePreprocessingLayer):
         boxes = bounding_boxes["boxes"]
         flips = transformation["flips"]
 
-        batch_size = ops.numpy.shape(boxes)[0]
-        max_boxes = ops.numpy.shape(boxes)[1]
+        batch_size = self.backend.shape(boxes)[0]
+        max_boxes = self.backend.shape(boxes)[1]
 
         # Apply flips based on mode
         if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
