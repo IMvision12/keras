@@ -2,6 +2,15 @@ from keras.src.api_export import keras_export
 from keras.src.layers.preprocessing.image_preprocessing.base_image_preprocessing_layer import (  # noqa: E501
     BaseImagePreprocessingLayer,
 )
+from keras.src.layers.preprocessing.image_preprocessing.bounding_boxes.converters import (  # noqa: E501
+    clip_to_image_size,
+)
+from keras.src.layers.preprocessing.image_preprocessing.bounding_boxes.converters import (  # noqa: E501
+    convert_format,
+)
+from keras.src.layers.preprocessing.image_preprocessing.bounding_boxes.validation import (  # noqa: E501
+    densify_bounding_boxes,
+)
 from keras.src.random.seed_generator import SeedGenerator
 
 HORIZONTAL = "horizontal"
@@ -94,7 +103,56 @@ class RandomFlip(BaseImagePreprocessingLayer):
         transformation,
         training=True,
     ):
-        raise NotImplementedError
+        if self.bounding_box_format is None:
+            raise ValueError(
+                "`RandomFlip()` was called with bounding boxes,"
+                "but no `bounding_box_format` was specified in the constructor."
+                "Please specify a bounding box format in the constructor. i.e."
+                "`RandomFlip(bounding_box_format='xyxy')`"
+            )
+        bounding_boxes = densify_bounding_boxes(bounding_boxes, backend=self.backend)
+        bounding_boxes = convert_format(
+            bounding_boxes,
+            source=self.bounding_box_format,
+            target="xyxy",
+        )
+        boxes = bounding_boxes["boxes"]
+        batch_size = self.backend.shape(boxes)[0]
+        max_boxes = self.backend.shape(boxes)[1]
+        flip_horizontals = transformation["flip_horizontals"]
+        flip_verticals = transformation["flip_verticals"]
+
+        # broadcast
+        flip_horizontals = (
+            self.backend.ones(shape=(batch_size, max_boxes, 4))
+            * flip_horizontals[:, self.backend.numpy.newaxis, :]
+        )
+        flip_verticals = (
+            self.backend.ones(shape=(batch_size, max_boxes, 4))
+            * flip_verticals[:, self.backend.numpy.newaxis, :]
+        )
+
+        boxes = self.backend.numpy.where(
+            flip_horizontals > (1.0 - self.rate),
+            self._flip_boxes_horizontal(boxes),
+            boxes,
+        )
+        boxes = self.backend.numpy.where(
+            flip_verticals > (1.0 - self.rate),
+            self._flip_boxes_vertical(boxes),
+            boxes,
+        )
+
+        bounding_boxes = bounding_boxes.copy()
+        bounding_boxes["boxes"] = boxes
+
+        bounding_boxes = convert_format(
+            bounding_boxes,
+            source="xyxy",
+            target=self.bounding_box_format,
+            dtype=self.compute_dtype,
+        )
+        return bounding_boxes
 
     def transform_segmentation_masks(
         self, segmentation_masks, transformation, training=True
