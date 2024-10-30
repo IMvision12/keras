@@ -154,6 +154,16 @@ class RandomFlip(BaseImagePreprocessingLayer):
         )
         return bounding_boxes
 
+    def _flip_boxes_horizontal(self, boxes):
+        x1, x2, x3, x4 = self.backend.numpy.split(boxes, 4, axis=-1)
+        outputs = self.backend.numpy.concat([1 - x3, x2, 1 - x1, x4], axis=-1)
+        return outputs
+
+    def _flip_boxes_vertical(self, boxes):
+        x1, x2, x3, x4 = self.backend.numpy.split(boxes, 4, axis=-1)
+        outputs = self.backend.numpy.concat([x1, 1 - x4, x3, 1 - x2], axis=-1)
+        return outputs
+    
     def transform_segmentation_masks(
         self, segmentation_masks, transformation, training=True
     ):
