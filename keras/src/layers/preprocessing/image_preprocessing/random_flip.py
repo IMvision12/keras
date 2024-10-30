@@ -12,6 +12,7 @@ from keras.src.layers.preprocessing.image_preprocessing.bounding_boxes.validatio
     densify_bounding_boxes,
 )
 from keras.src.random.seed_generator import SeedGenerator
+import numpy as np
 
 HORIZONTAL = "horizontal"
 VERTICAL = "vertical"
@@ -129,7 +130,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
         if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
             flip_horizontals = (
                 ops.numpy.ones(shape=(batch_size, max_boxes, 4))
-                * flips[:, ops.numpy.newaxis, :]
+                * np.expand_dims(flips, axis=1)
             )
             boxes = ops.numpy.where(
                 flip_horizontals > (1.0 - self.rate),
@@ -139,7 +140,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
         if self.mode == VERTICAL or self.mode == HORIZONTAL_AND_VERTICAL:
             flip_verticals = (
                 ops.numpy.ones(shape=(batch_size, max_boxes, 4))
-                * flips[:, ops.numpy.newaxis, :]
+                * np.expand_dims(flips, axis=1)
             )
             boxes = ops.numpy.where(
                 flip_verticals > (1.0 - self.rate),
@@ -159,13 +160,13 @@ class RandomFlip(BaseImagePreprocessingLayer):
         return bounding_boxes
 
     def _flip_boxes_horizontal(self, boxes):
-        x1, x2, x3, x4 = ops.numpy.split(boxes, 4, axis=-1)
-        outputs = ops.numpy.concat([1 - x3, x2, 1 - x1, x4], axis=-1)
+        x1, x2, x3, x4 = np.split(boxes, 4, axis=-1)
+        outputs = np.concat([1 - x3, x2, 1 - x1, x4], axis=-1)
         return outputs
 
     def _flip_boxes_vertical(self, boxes):
-        x1, x2, x3, x4 = ops.numpy.split(boxes, 4, axis=-1)
-        outputs = ops.numpy.concat([x1, 1 - x4, x3, 1 - x2], axis=-1)
+        x1, x2, x3, x4 = np.split(boxes, 4, axis=-1)
+        outputs = np.concat([x1, 1 - x4, x3, 1 - x2], axis=-1)
         return outputs
     
     def transform_segmentation_masks(
