@@ -130,7 +130,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
         if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
             flip_horizontals = (
                 ops.numpy.ones(shape=(batch_size, max_boxes, 4))
-                * np.expand_dims(flips, axis=1)
+                * self.backend.numpy.expand_dims(flips, axis=1)
             )
             boxes = ops.numpy.where(
                 flip_horizontals > (1.0 - self.rate),
@@ -140,7 +140,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
         if self.mode == VERTICAL or self.mode == HORIZONTAL_AND_VERTICAL:
             flip_verticals = (
                 ops.numpy.ones(shape=(batch_size, max_boxes, 4))
-                * np.expand_dims(flips, axis=1)
+                * self.backend.numpy.expand_dims(flips, axis=1)
             )
             boxes = ops.numpy.where(
                 flip_verticals > (1.0 - self.rate),
