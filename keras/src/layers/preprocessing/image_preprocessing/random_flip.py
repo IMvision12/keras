@@ -103,6 +103,7 @@ class RandomFlip(BaseImagePreprocessingLayer):
         transformation,
         training=True,
     ):
+        print(transformation)
         if self.bounding_box_format is None:
             raise ValueError(
                 "`RandomFlip()` was called with bounding boxes,"
@@ -110,38 +111,41 @@ class RandomFlip(BaseImagePreprocessingLayer):
                 "Please specify a bounding box format in the constructor. i.e."
                 "`RandomFlip(bounding_box_format='xyxy')`"
             )
+        # Convert to dense format and standardize to xyxy
         bounding_boxes = densify_bounding_boxes(bounding_boxes, backend=self.backend)
         bounding_boxes = convert_format(
             bounding_boxes,
             source=self.bounding_box_format,
             target="xyxy",
         )
+        
         boxes = bounding_boxes["boxes"]
+        flips = transformation["flips"]
+
         batch_size = self.backend.shape(boxes)[0]
         max_boxes = self.backend.shape(boxes)[1]
-        flip_horizontals = transformation["flip_horizontals"]
-        flip_verticals = transformation["flip_verticals"]
 
-        # broadcast
-        flip_horizontals = (
-            self.backend.ones(shape=(batch_size, max_boxes, 4))
-            * flip_horizontals[:, self.backend.numpy.newaxis, :]
-        )
-        flip_verticals = (
-            self.backend.ones(shape=(batch_size, max_boxes, 4))
-            * flip_verticals[:, self.backend.numpy.newaxis, :]
-        )
-
-        boxes = self.backend.numpy.where(
-            flip_horizontals > (1.0 - self.rate),
-            self._flip_boxes_horizontal(boxes),
-            boxes,
-        )
-        boxes = self.backend.numpy.where(
-            flip_verticals > (1.0 - self.rate),
-            self._flip_boxes_vertical(boxes),
-            boxes,
-        )
+        # Apply flips based on mode
+        if self.mode == HORIZONTAL or self.mode == HORIZONTAL_AND_VERTICAL:
+            flip_horizontals = (
+                self.backend.ones(shape=(batch_size, max_boxes, 4))
+                * flips[:, self.backend.numpy.newaxis, :]
+            )
+            boxes = self.backend.numpy.where(
+                flip_horizontals > (1.0 - self.rate),
+                self._flip_boxes_horizontal(boxes),
+                boxes,
+            )
+        if self.mode == VERTICAL or self.mode == HORIZONTAL_AND_VERTICAL:
+            flip_verticals = (
+                self.backend.ones(shape=(batch_size, max_boxes, 4))
+                * flips[:, self.backend.numpy.newaxis, :]
+            )
+            boxes = self.backend.numpy.where(
+                flip_verticals > (1.0 - self.rate),
+                self._flip_boxes_vertical(boxes),
+                boxes,
+            )
 
         bounding_boxes = bounding_boxes.copy()
         bounding_boxes["boxes"] = boxes
