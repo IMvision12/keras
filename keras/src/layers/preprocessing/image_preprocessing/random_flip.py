@@ -114,13 +114,13 @@ class RandomFlip(BaseImagePreprocessingLayer):
             )
         # Convert to dense format and standardize to xyxy
         bounding_boxes = densify_bounding_boxes(bounding_boxes, backend=self.backend)
-        bounding_boxes = convert_format(
-            bounding_boxes,
+        boxes = bounding_boxes["boxes"]
+        boxes = convert_format(
+            boxes,
             source=self.bounding_box_format,
             target="xyxy",
         )
         
-        boxes = bounding_boxes["boxes"]
         flips = transformation["flips"]
 
         batch_size = self.backend.shape(boxes)[0]
@@ -147,17 +147,17 @@ class RandomFlip(BaseImagePreprocessingLayer):
                 self._flip_boxes_vertical(boxes),
                 boxes,
             )
-
-        bounding_boxes = bounding_boxes.copy()
-        bounding_boxes["boxes"] = boxes
-
-        bounding_boxes = convert_format(
-            bounding_boxes,
+            
+        boxes = convert_format(
+            boxes,
             source="xyxy",
             target=self.bounding_box_format,
             dtype=self.compute_dtype,
         )
-        return bounding_boxes
+        return {
+            "boxes": boxes,
+            "labels": bounding_boxes["labels"],
+        }
 
     def _flip_boxes_horizontal(self, boxes):
         x1, x2, x3, x4 = np.split(boxes, 4, axis=-1)
